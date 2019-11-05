@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <!-- Global site tag (gtag.js) - Google Analytics -->
+        <script async src="https://www.googletagmanager.com/gtag/js?id=UA-117608981-1"></script>
+        <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'UA-117608981-1');
+        </script>
+        <title>Stop - A software system programming language</title>
+    </head>
+    <body>
+        <h1>Stop</h1>
+        <p>
+            Stop is a language for defining software systems.
+        </p>
+        <p>
+            The goal of Stop is to serve as a software blueprint.  It is a tool that allows developers to focus and communicate the goals of a system without specific programming language implementation.  Stop defines the data model, states and transitions of a software system.
+        </p>
+        <h2>Roadmap</h2>
+        <p>
+            The language is just the start.  The plan is to map a Stop definition directly to a running software system where state implementation can be written in a variety of programming languages.
+        </p>
+        <h2>Why is it called Stop?</h2>
+        <p>
+            Because Go is popular and it's not Go.  It's Stop.  Also, a key concept of the language is finding a stopping state.
+        </p>
+        <h2>Hello World!</h2>
+        <p>
+            Here is a Hello World! of a simple Stop file.
+        </p>
+        <pre>
+    start Hello {
+        string whom
+        -> Say
+    }
+    
+    stop Say {
+        string words
+    }
+        </pre>
+        <p>
+            This system satisfies the minimum requirement of at least one start and stopping state.  There is one transition from the starting Hello state to the stopping state of Say.  The Hello state would require an implementation that would transition only to the Say state with the correct arguments (in this case a single property of type string called words).
+        </p>
+        <h2>States</h2>
+        <p>
+            Stop revolves around one main type called a state.  Everything in Stop is a kind of state.
+        </p>
+        <p>
+            The simplest version of a state looks like a basic data object.  Every property is required and there is no concept of null.  If a property should be empty it should contain the default value for the type.
+        </p>
+        <pre>
+    User {
+        uint64 id
+        string username
+        string email
+    }
+        </pre>
+        <p>
+            A state can define transitions to other states.
+        </p>
+        <pre>
+    Router {
+        Request request
+        -> Login
+        -> Authenticate
+    }
+        </pre>
+        <p>
+            A state can throw an error state and transition to it.
+        </p>
+        <pre>
+    UserNotFoundError {
+        string message
+    }
+
+    Authenticate throws UserNotFoundError {
+        string login
+        string password
+        -> Redirect
+    }
+        </pre>
+        <p>
+            A state can also yield a single value and return it.  Value states are utilized as dynamic properties.
+        </p>
+        <pre>
+    GetUser <- User {
+        uint64 user_id
+    }
+
+    Profile {
+        uint64 user_id
+        User user <- GetUser
+        -> Render
+    }
+        </pre>
+        <p>
+            A state can be a queue state.  Queue states are a special kind of state that cannot be transitioned to.  Instead they can only be added to with the promise that the queue will state will be executed at some later time.
+        </p>
+        <pre>
+    CreatePost {
+        Post post
+        >> PushNotification
+        -> Redirect
+    }
+
+    queue PushNotification {
+        Post post
+    }
+
+    stop SendPushNotification {
+        string recipient
+        string message
+    }
+        </pre>
+        <h2>Properties</h2>
+        <p>
+            States can define scalar, reference, enumeration, collection and dynamic properties.
+        </p>
+        <h3>Scalar properties</h3>
+        <p>
+            Here is a list of the scalar property types that can be used:
+        </p>
+        <ul>
+            <li>double</li><li>float</li><li>int32</li><li>int64</li><li>uint32</li><li>uint64</li><li>sint32</li><li>sint64</li><li>fixed32</li><li>fixed64</li><li>sfixed32</li><li>sfixed64</li><li>bool</li><li>string</li><li>bytes</li><li>timestamp</li>
+        </ul>
+        <h3>Reference properties</h3>
+        <p>A state can define a property with the type of another State.  Here a User object has an address property of type Address.</p>
+        <pre>
+    Address {
+        string street
+        string city
+        string state
+        string zip
+    }
+
+    User {
+        uint64 id
+        string username
+        string email
+        Address address
+    }
+        </pre>
+        <h3>Enumeration properties</h3>
+        <p>Enumerations can be defined within a state.  Here an enumeration role is defined and referenced as a property.</p>
+        <pre>
+    User {
+        enum Role {
+            STANDARD
+            MANAGER
+            ADMIN
+        }
+        uint64 id
+        string username
+        string email
+        Role role
+    }
+        </pre>
+        <h3>Collection properties</h3>
+        <p>A property can also be defined as a collection of either scalar, enum or state types.  Here the emails and addresses properties are collections.</p>
+        <pre>
+    Address {
+        string street
+        string city
+        string state
+        string zip
+    }
+
+    User {
+        uint64 id
+        string username
+        [string] emails
+        [Address] addresses
+    }
+        </pre>
+        <h3>Dynamic properties</h3>
+        <p>
+            Dynamic properties are not required when transitioning to a state with them defined.  These properties will be calculated at runtime.
+        </p>
+        <p>
+            They are defined like any other property but with a <code><-</code> operator following by a reference to a value state that returns the same property type.
+        </p>
+        <p>
+            Here in the Profile state user_id would be a required property while the user property is dynamic.  The user property will be retrieved by calling the value state GetUser with the <code>user_id</code> property which gets mapped to the <code>id</code> property of GetUser.  The Profile state is valid after it has gathered all of its required and dynamic properties successfully.
+        </p>
+        <pre>
+    GetUser <- User throws UserNotFoundError {
+        uint64 id
+    }
+
+    Profile {
+        uint64 user_id
+        User user <- GetUser(id: user_id)
+        -> Render
+    }
+        </pre>
+        <h3>Optional properties</h3>
+        <p>
+            A property can be made optional by prefixing the definition with the keyword <code>optional</code>.  Otherwise properties default to being required.
+        </p>
+        <p>
+            Optional properties can be left undefined when building an instance of a State.  Any Stop runtime implementation should be dynamically checking for optionality during state transition validation.
+        </p>
+        <p>
+            Use optionals sparingly.  State implementations that rely on States with optionals will have to handle the ambiguity presented by properties that could be undefined.
+        </p>
+        <p>
+            In the example below a body property is optional and likely only used on POST requests.
+        </p>
+        <pre>
+    Request {
+        enum Method {
+            GET
+            POST
+            PUT
+            DELETE
+            OPTIONS
+        }
+        Method method
+        string path
+        optional string body
+        [Header] headers
+        [Parameter] parameters
+    }
+        </pre>
+        <h2>Transitions</h2>
+        <p>
+            Transitions are defined within a state with the <code>-></code> operator following by a reference to defined state.
+        </p>
+        <pre>
+    Router {
+        Request request
+        -> Login
+        -> Register
+    }
+        </pre>
+        <p>
+            A state with transitions implies a programming implementation.  Another piece of code somewhere will decide how this transition takes place but the only possible transitions are to Login and Register.  When the state decides to transition that programming implementation will be required to create valid Login and Register states with their required properties.
+        </p>
+        <h3>Starting States</h3>
+        <p>
+            A Stop system needs at least one <code>start</code> state.  There can be multiple start states that identify entry points into the software system.
+        </p>
+        <pre>
+    start Router {
+        Request request
+        -> Login
+        -> Register
+    }
+        </pre>
+        <h3>Stopping states</h3>
+        <p>
+            Every sequence of transitions must eventually end in a <code>stop</code> state.  A Stop file is considered incorrect if any transition does not lead to a stop state.
+        </p>
+        <pre>
+    start Router {
+        Request request
+        -> Login
+    }
+
+    Login {
+        -> Response
+    }
+
+    stop Response {
+        uint32 status
+        string content_type
+        string body
+    }
+        </pre>
+        <h2>Queue States</h2>
+        <p>
+            Queue states are a special kind of state that cannot be transitioned to.  Queues can only be added to with the guarantee that the enqueued item will be executed at some later time.
+        </p>
+        <p>
+            Queues are a way to handle background or long running tasks like processing an audio file or sending push notifications.
+        </p>
+        <p>
+            To enqueue an item on a queue you simple create an instance of the queue State.  The instance of the queue State you create will then be executed as its own independent state machine at some later point in time when a worker can execute it.
+        </p>
+        <p>
+            A queue state example:
+        </p>
+    <pre>
+    CreatePost {
+        Post post
+        >> PushNotification
+        -> Redirect
+    }
+
+    queue PushNotification {
+        Post post
+    }
+
+    stop SendPushNotification {
+        string recipient
+        string message
+    }
+    </pre>
+        <p>
+            Notice that the CreatePost state signals that it may enqueue items onto the PushNotification queue with the <code>>></code> operator.  The enqueue action is similar to but not quite a transition.  While it eventually invokes another state it does so outside of the current thread of execution at a later time.
+        </p>
+        <p>
+            A runtime implementation should execute an enqueued state as if it is a starting state in search of a stopping state like any Stop state machine.
+        </p>
+        <h2>Errors</h2>
+        <p>
+            States can throw error states to transition to when something goes wrong.  They work exactly like transitions just with a comma separated list of state references after <code>throws</code>.  What happens after transitioning to an error state is up to you (just be sure it eventually finds a stopping state).
+        </p>
+        <pre>
+    RouteNotFoundError {
+        string message
+        -> Render
+    }
+
+    UnauthorizedError {
+        string message
+        -> Render
+    }
+
+    Router throws RouteNotFoundError, UnauthorizedError {
+        Request request
+        -> Login
+        -> Register
+        -> Dashboard
+    }
+        </pre>
+        <h2>About</h2>
+        <h3>Author</h3>
+        <p>
+            Kyle Shank
+        </p>
+        <h3>Source Code</h3>
+        <p>
+            <a href="https://github.com/pocketlabs/stop">Github</a>
+        </p>
+        <h3>License</h3>
+        <p>
+            Stop is open source and licensed under the <a href="https://github.com/pocketlabs/stop/blob/master/LICENSE">MIT License</a>.
+        </p>
+    </body>
+</html>
