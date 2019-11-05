@@ -88,12 +88,12 @@
         </p>
         <pre>
     GetUser <- User {
-        uint64 user_id
+        uint64 id
     }
 
     Profile {
         uint64 user_id
-        User user <- GetUser
+        User user <- GetUser(id: user_id)
         -> Render
     }
         </pre>
@@ -145,7 +145,28 @@
     }
         </pre>
         <h3>Enumeration properties</h3>
-        <p>Enumerations can be defined within a state.  Here an enumeration role is defined and referenced as a property.</p>
+        <p>Enumerations can be defined globally or within a state.</p>
+        <p>An enumeration can be defined globally and can be used within multiple states.</p>
+        <pre>
+    enum Method {
+        GET
+        POST
+        DELETE
+        PUT
+    }
+
+    Request {
+        Method method
+        String path
+    }
+
+    ErrorLogMessage {
+        Method method
+        String path
+        String error
+    }
+        </pre>
+        <p>An enumeration can also be defined and used only within the context of a single state.</p>
         <pre>
     User {
         enum Role {
